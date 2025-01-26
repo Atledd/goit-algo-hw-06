@@ -1,5 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+from collections import deque
+import heapq
 
 #Задання 1
 # Створимо граф, який представляє транспортну мережу міста
@@ -44,20 +46,79 @@ for node, degree in degree_of_nodes.items():
     print(f"  {node}: {degree}")
 
 # Завдання 2: Реалізація DFS і BFS
+graph_dict = nx.to_dict_of_lists(city_graph)  # Перетворюємо граф NetworkX у словник для ручних алгоритмів
+
 # DFS
+def dfs_recursive(graph, vertex, visited=None):
+    if visited is None:
+        visited = set()
+        path = []
+    else:
+        path = []
+
+    visited.add(vertex)
+    path.append(vertex) # Додаємо вершину до шляху
+
+    for neighbor in graph[vertex]:
+        if neighbor not in visited:
+            path.extend(dfs_recursive(graph, neighbor, visited))
+    
+    return path
+
 print("\nDFS шлях від Дарницького:")
-path_dfs = list(nx.dfs_edges(city_graph, source="Дарницький"))
+path_dfs = dfs_recursive(graph_dict, "Дарницький")
 print(path_dfs)
 
 # BFS
+def bfs_recursive(graph, queue, visited=None, path=None):
+    if visited is None:
+        visited = set()
+    if path is None:
+        path = []
+    if not queue:
+        return path
+    vertex = queue.popleft()
+    if vertex not in visited:
+        visited.add(vertex)
+        path.append(vertex)
+        queue.extend(set(graph[vertex]) - visited)
+    return bfs_recursive(graph, queue, visited, path)
+
 print("\nBFS шлях від Дарницького:")
-path_bfs = list(nx.bfs_edges(city_graph, source="Дарницький"))
+queue = deque(["Дарницький"])
+path_bfs = bfs_recursive(graph_dict, queue)
 print(path_bfs)
 
 # Завдання 3: Алгоритм Дейкстри
-print("\nНайкоротші шляхи від Данрницього району:")
-dijkstra_paths = nx.single_source_dijkstra_path(city_graph, source="Дарницький")
-dijkstra_lengths = nx.single_source_dijkstra_path_length(city_graph, source="Дарницький")
+def dijkstra(graph, start):
+    distances = {vertex: float('infinity') for vertex in graph.nodes}
+    distances[start] = 0
+    priority_queue = [(0, start)] # Черга: (відстань, вершина)
+    visited = set()
 
-for target, path in dijkstra_paths.items():
-    print(f"Шлях до {target}: {path}, Довжина: {dijkstra_lengths[target]} км")
+    while priority_queue:
+        # Отримуємо вершину з найменшою відстанню
+        current_distance, current_vertex = heapq.heappop(priority_queue)
+
+        # Пропускаємо вже відвідані вершини
+        if current_vertex in visited:
+            continue
+        visited.add(current_vertex)
+
+        # Оновлюємо відстані до сусідів
+        for neighbor, attributes in graph[current_vertex].items():
+            weight = attributes['weight']
+            distance = current_distance + weight
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                heapq.heappush(priority_queue, (distance, neighbor))
+
+    return distances
+
+print("\nНайкоротший шлях від Данрницього району:")
+city_graph.add_nodes_from(nodes)
+city_graph.add_weighted_edges_from(edges)
+distances = dijkstra(city_graph, "Дарницький")
+
+for vertex, distance in distances.items():
+    print(f"Відстань від Дарницького району до {vertex}: {distance} км")
